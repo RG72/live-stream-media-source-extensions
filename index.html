@@ -1,150 +1,121 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <title>Live video MSE using ffmpeg, node.js, and socket.io</title>
-    <script src ="/socket.io/socket.io.js"></script>
-    <script src="/flv.min.js"></script>
+  <meta charset="UTF-8">
+  <title>Live video MSE using ffmpeg, node.js, and socket.io</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/flv.min.js"></script>
 </head>
+
 <body>
 
-    <video id="mse" muted width="640" height="360"></video>
+  <video id="mse" muted width="640" height="360"></video>
 
-    <script>
+  <script>
+    (function() {
 
-        (function () {
+      /*
 
-            /*
+      https://cconcolato.github.io/media-mime-support/
 
-            https://cconcolato.github.io/media-mime-support/
+      h.264 profile, xx is level
+      baseline = avc1.42E0xx;
+      constrained main = avc1.4D40xx;
+      main = avc1.4D00xx
+      high = avc1.6400xx;
 
-            h.264 profile, xx is level
-            baseline = avc1.42E0xx;
-            constrained main = avc1.4D40xx;
-            main = avc1.4D00xx
-            high = avc1.6400xx;
+      h.264 level (hex values)
+      3.0 = 1E
+      3.1 = 1F;
+      4.0 = 28;
+      4.1 = 29;
+      4.2 = 2A;
 
-            h.264 level (hex values)
-            3.0 = 1E
-            3.1 = 1F;
-            4.0 = 28;
-            4.1 = 29;
-            4.2 = 2A;
+      audio
+      mp4a.40.2
 
-            audio
-            mp4a.40.2
+      ex. main 4.1 with audio; mime = 'video/mp4; codecs="avc1.4D0029, mp4a.40.2"'
 
-            ex. main 4.1 with audio; mime = 'video/mp4; codecs="avc1.4D0029, mp4a.40.2"'
+      use -movflags +frag_keyframe+empty_moov+default_base_moof to generate a compatibly fragmented mp4 from ffmpeg
 
-            use -movflags +frag_keyframe+empty_moov+default_base_moof to generate a compatibly fragmented mp4 from ffmpeg
+       */
 
-             */
+      var mime = 'video/mp4; codecs="avc1.4D0029"';
+      if (!MediaSource.isTypeSupported(mime)) {
+        alert('Unsupported mime type');
+        return;
+      }
 
-            var mime = 'video/mp4; codecs="avc1.4D0029"';
+      var buffer;
+      var socket;
+      var video = document.getElementById('mse');
+      var mediaSource = new MediaSource();
+      video.src = URL.createObjectURL(mediaSource);
+      mediaSource.addEventListener('sourceended', function(e) {
+        console.log('sourceended: ' + mediaSource.readyState);
+      });
 
-            if (!MediaSource.isTypeSupported(mime)) {
+      mediaSource.addEventListener('sourceclose', function(e) {
+        console.log('sourceclose: ' + mediaSource.readyState);
+        //todo remove( buffer = mediaSource.addSourceBuffer(mime))
+      });
 
-                alert('Unsupported mime type');
+      mediaSource.addEventListener('error', function(e) {
+        console.log('error: ' + mediaSource.readyState);
+      });
 
-                return;
+      mediaSource.addEventListener('sourceopen', function(e) {
+        console.log('sourceopen: ' + mediaSource.readyState);
+        buffer = mediaSource.addSourceBuffer(mime);
+        buffer.mode = 'sequence';
+        buffer.addEventListener('update', function(e) {
+          console.log('update');
+        });
 
-            }
+        buffer.addEventListener('updateend', function(e) {
+          console.log('updateend');
 
-            var buffer;
+          //hack to get safari on mac to start playing, video.currentTime gets stuck on 0
+          if (mediaSource.duration !== Number.POSITIVE_INFINITY && video.currentTime === 0 && mediaSource.duration > 0) {
+            video.currentTime = mediaSource.duration - 1;
+            mediaSource.duration = Number.POSITIVE_INFINITY;
+          }
 
-            var socket;
+          video.play();
+        });
 
-            var video = document.getElementById('mse');
+        socket = io(null, {
+          transports: ['websocket']
+        });
 
-            var mediaSource = new MediaSource();
+        socket.emit('message', 'start');
+        socket.on('segment', function(data) {
+          var data = new Uint8Array(data);
+          buffer.appendBuffer(data);
+        });
 
-            video.src = URL.createObjectURL(mediaSource);
+        socket.on('message', function(msg) {
+          alert('Message from server: ' + msg);
+        });
+      }, false);
+    })();
+  </script>
 
-            mediaSource.addEventListener('sourceended', function(e) {
+  <video width="640" height="360" id="videoElement"></video>
 
-                console.log('sourceended: ' + mediaSource.readyState);
-
-            });
-
-            mediaSource.addEventListener('sourceclose', function(e) {
-
-                console.log('sourceclose: ' + mediaSource.readyState);
-
-                //todo remove( buffer = mediaSource.addSourceBuffer(mime))
-
-            });
-
-            mediaSource.addEventListener('error', function(e) {
-
-                console.log('error: ' + mediaSource.readyState);
-
-            });
-
-            mediaSource.addEventListener('sourceopen', function(e) {
-
-                console.log('sourceopen: ' + mediaSource.readyState);
-
-                buffer = mediaSource.addSourceBuffer(mime);
-
-                buffer.mode = 'sequence';
-
-                buffer.addEventListener('update', function(e) {
-
-                    console.log('update');
-
-                });
-
-                buffer.addEventListener('updateend', function(e) {
-
-                    console.log('updateend');
-
-                    //hack to get safari on mac to start playing, video.currentTime gets stuck on 0
-                    if (mediaSource.duration !== Number.POSITIVE_INFINITY && video.currentTime === 0 && mediaSource.duration > 0) {
-                        video.currentTime = mediaSource.duration - 1;
-                        mediaSource.duration = Number.POSITIVE_INFINITY;
-                    }
-
-                    video.play();
-
-                });
-
-                socket = io(null, {transports: ['websocket']});
-
-                socket.emit('message', 'start');
-
-                socket.on('segment', function (data) {
-
-                    var data = new Uint8Array(data);
-
-                    buffer.appendBuffer(data);
-
-                });
-
-                socket.on('message', function(msg) {
-                    alert('Message from server: ' + msg);
-                });
-
-            }, false);
-
-        })();
-
-    </script>
-
-    <video width="640" height="360" id="videoElement"></video>
-
-    <script>
-        if (flvjs.isSupported()) {
-            var videoElement = document.getElementById('videoElement');
-            var flvPlayer = flvjs.createPlayer({
-                isLive: true,
-                type: 'mp4',
-                url: '/test.mp4'//change to test2.mp4 to get
-            });
-            flvPlayer.attachMediaElement(videoElement);
-            flvPlayer.load();
-            flvPlayer.play();
-        }
-    </script>
-
+  <script>
+    if (flvjs.isSupported()) {
+      var videoElement = document.getElementById('videoElement');
+      var flvPlayer = flvjs.createPlayer({
+        isLive: true,
+        type: 'mp4',
+        url: '/0/test.mp4' //change to test2.mp4 to get
+      });
+      flvPlayer.attachMediaElement(videoElement);
+      flvPlayer.load();
+      flvPlayer.play();
+    }
+  </script>
 </body>
 </html>

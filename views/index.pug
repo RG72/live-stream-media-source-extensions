@@ -1,0 +1,4 @@
+extends layout
+block content
+  for streamCfg,idx in settings.streams
+    video(width=300,height=300,src="/"+idx+"/test.mp4",controls)
