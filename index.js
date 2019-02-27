@@ -15,7 +15,11 @@ settings.streams.forEach((streamCfg,idx)=>{
 
   r.mp4segmenter = new Mp4Segmenter();
 
-  r.ffmpeg = spawn('ffmpeg', ['-loglevel', 'debug', '-reorder_queue_size', '5', '-rtsp_transport', 'tcp', '-i', streamCfg.uri, '-an', '-c:v', 'copy', '-f', 'mp4', '-movflags', '+frag_keyframe+empty_moov+default_base_moof', '-metadata', 'title="media source extensions"', 'pipe:1'], {
+  r.ffmpeg = spawn('ffmpeg', ['-loglevel', 'debug', '-reorder_queue_size', '5', '-rtsp_transport', 'tcp', '-i', streamCfg.uri,
+  //'-an', //disable audio
+  '-use_wallclock_as_timestamps 1',
+  '-fflags +genpts',
+  '-c:v', 'copy', '-f', 'mp4', '-movflags', '+frag_keyframe+empty_moov+default_base_moof', '-metadata', 'title="media source extensions"', 'pipe:1'], {
     stdio: ['ignore', 'pipe', 'inherit' /* change stdio[2] inherit to ignore to hide ffmpeg debug to stderr */ ]
     //stdio:['ignore','ignore','ignore']
   });

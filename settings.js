@@ -5,35 +5,27 @@ module.exports={
   streams:[
     {
       uri:'rtsp://root:root@192.168.20.108/axis-media/media.amp',
-      mute:false,
       volume:100
     },{
       uri:'rtsp://root:root@192.168.20.109/axis-media/media.amp',
-      mute:false,
       volume:100
     },{
       uri:'rtsp://root:root@192.168.20.103/axis-media/media.amp',
-      mute:false,
       volume:100
     },{
       uri:'rtsp://root:root@192.168.20.102/axis-media/media.amp',
-      mute:false,
       volume:100
     },{
       uri:'rtsp://root:root@192.168.20.107/axis-media/media.amp',
-      mute:false,
       volume:100
     },{
       uri:'rtsp://root:root@192.168.20.106/axis-media/media.amp',
-      mute:false,
       volume:100
     },{
       uri:'rtsp://root:root@192.168.20.105/axis-media/media.amp',
-      mute:false,
       volume:100
     },{
-      uri:'rtsp://root:root@192.168.20.110/axis-media/media.amp',
-      mute:false,
+      uri:'rtsp://root:root@192.168.20.110/axis-media/media.amp',      
       volume:100
     }
   ]
