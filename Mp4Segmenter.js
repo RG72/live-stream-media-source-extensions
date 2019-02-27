@@ -2,6 +2,9 @@
 'use strict';
 
 const { Transform } = require('stream');
+var errorHandler=function(err){
+  console.log("Error! "+err.toString());
+}
 
 class Mp4Segmenter extends Transform {
     constructor(options, callback) {
@@ -18,7 +21,7 @@ class Mp4Segmenter extends Transform {
             return this._initSegment;
         } else {
             return null;
-            //throw new Error('init segment not created yet');
+            //return errorHandler(new Error('init segment not created yet'));
         }
     }
 
@@ -30,7 +33,7 @@ class Mp4Segmenter extends Transform {
         }
         const index = this._initSegment.indexOf('avcC') + 5;
         if (index === -1) {
-            throw new Error('header does not contain codec information');
+            return errorHandler(new Error('header does not contain codec information'));
         }
         this._codecString = `video/mp4; codecs="avc1.${this._initSegment.slice(index , index + 3).toString('hex').toUpperCase()}${audioString}"`;
         console.log(this._codecString);
@@ -40,7 +43,7 @@ class Mp4Segmenter extends Transform {
     _findFtyp(chunk) {
         //console.log('findFtyp');
         if (chunk[4] !== 0x66 || chunk[5] !== 0x74 || chunk[6] !== 0x79 || chunk[7] !== 0x70) {
-            throw new Error('cannot find ftyp');
+            return errorHandler(new Error('cannot find ftyp'))
         }
         const chunkLength = chunk.length;
         this._ftypLength = chunk.readUIntBE(0, 4);
@@ -53,14 +56,14 @@ class Mp4Segmenter extends Transform {
             this._parseChunk = this._findMoov;
         } else {
             //should not be possible to get here because ftyp is very small
-            throw new Error('ftypLength greater than chunkLength');
+            return errorHandler(new Error('ftypLength greater than chunkLength'));
         }
     }
 
     _findMoov(chunk) {
         //console.log('findMoov');
         if (chunk[4] !== 0x6D || chunk[5] !== 0x6F || chunk[6] !== 0x6F || chunk[7] !== 0x76) {
-            throw new Error('cannot find moov');
+            return errorHandler(new Error('cannot find moov'));
         }
         const chunkLength = chunk.length;
         const moovLength = chunk.readUIntBE(0, 4);
@@ -80,17 +83,17 @@ class Mp4Segmenter extends Transform {
         } else {
             //should not be possible to get here
             //if we do, will have to store chunk until size is big enough to have entire moov piece
-            throw new Error('moovLength greater than chunkLength');
+            return errorHandler(new Error('moovLength greater than chunkLength'));
         }
     }
-    
+
     _findMoof(chunk) {
         //console.log('findMoof');
         if (chunk[4] !== 0x6D || chunk[5] !== 0x6F || chunk[6] !== 0x6F || chunk[7] !== 0x66) {
             //did not previously parse a complete segment
             if (this._foundSegment === false) {
                 console.log(chunk.slice(0, 20).toString());
-                throw new Error('immediately failed to find moof');
+                return errorHandler(new Error('immediately failed to find moof'));
             } else {
                 //have to do a string search for moof or mdat and start loop again,
                 //sometimes ffmpeg gets a blast of data and sends it through corrupt
@@ -100,7 +103,8 @@ class Mp4Segmenter extends Transform {
                 if (chunk.toString().indexOf('mdat') !== 1) {
                     console.log('found mdat at ', chunk.toString().indexOf('mdat'));
                 }
-                throw new Error('failed to find moof after already running good');
+                //TODO
+                return errorHandler(new Error('failed to find moof after already running good'));
             }
         }
         const chunkLength = chunk.length;
@@ -116,10 +120,10 @@ class Mp4Segmenter extends Transform {
             this._parseChunk = this._findMdat;
         } else {
             //has not happened yet
-            throw new Error('mooflength > chunklength');
+            return errorHandler(new Error('mooflength > chunklength'));
         }
     }
-    
+
     _findMdat(chunk) {
         //console.log('find mdat');
         if (this._mdatBuffer) {
@@ -171,7 +175,7 @@ class Mp4Segmenter extends Transform {
             //first pass to ensure start of mdat and get its size, most likely chunk will not contain entire mdat
             if (chunk[4] !== 0x6D || chunk[5] !== 0x64 || chunk[6] !== 0x61 || chunk[7] !== 0x74) {
                 console.log(chunk.slice(0, 20).toString());
-                throw new Error('cannot find mdat');
+                return errorHandler(new Error('cannot find mdat'));
             }
             const chunkLength = chunk.length;
             this._mdatLength = chunk.readUIntBE(0, 4);
@@ -181,7 +185,7 @@ class Mp4Segmenter extends Transform {
                 this._mdatBufferSize = chunkLength;
             } else {
                 console.log(this._mdatLength, chunkLength);
-                throw new Error('mdatLength not greater than chunkLength');
+                return errorHandler(new Error('mdatLength not greater than chunkLength'));
             }
         }
     }
