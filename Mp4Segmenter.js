@@ -38,6 +38,7 @@ class Mp4Segmenter extends Transform {
         this._codecString = `video/mp4; codecs="avc1.${this._initSegment.slice(index , index + 3).toString('hex').toUpperCase()}${audioString}"`;
         console.log(this._codecString);
         console.log('init segment ready');
+        this.emit('initSegmentReady',this._codecString);
     }
 
     _findFtyp(chunk) {

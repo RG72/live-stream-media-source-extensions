@@ -33,6 +33,10 @@ settings.streams.forEach((streamCfg,idx)=>{
   });
 
   r.ffmpeg.stdio[1].pipe(r.mp4segmenter);
+  r.ready=false;
+  r.mp4segmenter.on('initSegmentReady',(_codecString)=>{
+    r.ready=true;
+  })
 });
 
 app.get('/:streamId/test.mp4', (req, res) => {
