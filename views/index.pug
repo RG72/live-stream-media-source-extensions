@@ -1,4 +1,6 @@
 extends layout
 block content
   for streamCfg,idx in settings.streams
-    video(width=600,height=600,src="/"+idx+"/test.mp4",controls,autoplay="autoplay",volume=(streamCfg.volume/100).toFixed(2))
+    video(id="video"+idx,width=600,height=600,src="/"+idx+"/test.mp4",controls,autoplay="autoplay",volume=(streamCfg.volume/100).toFixed(2))
+    script
+      | document.getElementById("video"+idx).volume=#{(streamCfg.volume/100).toFixed(2)};
