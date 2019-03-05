@@ -25,6 +25,7 @@
   "dependencies": {
     "express": "^4.16.2",
     "socket.io": "^2.0.4",
-    "pug": ">0.0.1"
+    "pug": ">0.0.1",
+    "afterglowplayer": ">0.0.1"
   }
 }

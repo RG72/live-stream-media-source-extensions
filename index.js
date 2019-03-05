@@ -9,34 +9,74 @@ var settings=require('./settings.js');
 const {spawn} = require('child_process');
 const Mp4Segmenter = new require('./Mp4Segmenter');
 
+settings.streams.forEach(function(streamCfg,idx){
+  streamCfg.res=streamCfg.res||[];
 
-settings.streams.forEach((streamCfg,idx)=>{
-  var r=streamCfg.running={};
+  var initFFmpeg=function(){
+    console.log("running ffmpeg %s",streamCfg.uri);
+    var r=streamCfg.running={};
+    r.mp4segmenter = new Mp4Segmenter();
 
-  r.mp4segmenter = new Mp4Segmenter();
+    r.ffmpeg = spawn('ffmpeg', ['-loglevel', 'debug', '-reorder_queue_size', '5', '-rtsp_transport', 'tcp', '-i', streamCfg.uri,
+    //'-an', //disable audio
+    '-use_wallclock_as_timestamps','1',
+    '-fflags','+genpts',
+    '-c:v', 'copy', '-f', 'mp4', '-movflags', '+frag_keyframe+empty_moov+default_base_moof', '-metadata', 'title="media source extensions"', 'pipe:1'], {
+      stdio: ['ignore', 'pipe', 'inherit' /* change stdio[2] inherit to ignore to hide ffmpeg debug to stderr */ ]
+      //stdio:['ignore','ignore','ignore']
+    });
 
-  r.ffmpeg = spawn('ffmpeg', ['-loglevel', 'debug', '-reorder_queue_size', '5', '-rtsp_transport', 'tcp', '-i', streamCfg.uri,
-  //'-an', //disable audio
-  '-use_wallclock_as_timestamps','1',
-  '-fflags','+genpts',
-  '-c:v', 'copy', '-f', 'mp4', '-movflags', '+frag_keyframe+empty_moov+default_base_moof', '-metadata', 'title="media source extensions"', 'pipe:1'], {
-    stdio: ['ignore', 'pipe', 'inherit' /* change stdio[2] inherit to ignore to hide ffmpeg debug to stderr */ ]
-    //stdio:['ignore','ignore','ignore']
-  });
+    r.ffmpeg.on('error', (error) => {
+      console.log('error', error);
+    });
 
-  r.ffmpeg.on('error', (error) => {
-    console.log('error', error);
-  });
+    r.ffmpeg.on('exit', (code, signal) => {
+      console.log('exit', code, signal);
+      r.close();
+      initFFmpeg();
+    });
 
-  r.ffmpeg.on('exit', (code, signal) => {
-    console.log('exit', code, signal);
-  });
+    r.ffmpeg.stdio[1].pipe(r.mp4segmenter);
+    r.ready=false;
 
-  r.ffmpeg.stdio[1].pipe(r.mp4segmenter);
-  r.ready=false;
-  r.mp4segmenter.on('initSegmentReady',(_codecString)=>{
-    r.ready=true;
-  })
+    r.writeSegment=function(chunk){
+      clearTimeout(r.segmentTimeout);
+      r.segmentTimeout=setTimeout(r.onSegmentTimeout,10000);
+      streamCfg.res.forEach((res)=>{
+        if (!res.initSegmentSended){
+          if (!r.mp4segmenter.initSegment) return;
+          res.write(r.mp4segmenter.initSegment);
+          res.initSegmentSended=true;
+        }
+
+        chunk && res.write(chunk);
+      });
+    };//writeSegment
+
+    r.mp4segmenter.on('initSegmentReady',(codecString)=>{
+      //send only init segment
+      r.writeSegment(null);
+      r.ready=true;
+    })
+
+    r.close=function(){
+      r.mp4segmenter.removeListener('segment', r.writeSegment);
+      r.ffmpeg.stdio[1].unpipe(r.mp4segmenter);
+      r.ffmpeg.stdin.pause();
+      r.ffmpeg.kill();
+    }
+
+    r.onSegmentTimeout=function(){
+      console.log("segmentTimeout");
+      //Reload ffmpeg
+      r.close();
+      initFFmpeg();
+    }
+    r.segmentTimeout=setTimeout(r.onSegmentTimeout,10000);
+
+    r.mp4segmenter.on('segment',r.writeSegment);
+  }
+  initFFmpeg();
 });
 
 app.get('/:streamId/test.mp4', (req, res) => {
@@ -47,48 +87,13 @@ app.get('/:streamId/test.mp4', (req, res) => {
     res.end('Have not config for '+req.params.streamId);
     return;
   }
-  var r=streamCfg.running;
-
-  if (!r.mp4segmenter.initSegment) {
-    res.status(503);
-    res.end('service not available');
-    return;
-  }
-
   res.status(200);
-  res.write(r.mp4segmenter.initSegment);
-  r.ffmpeg.stdio[1].pipe(res);
   res.on('close', () => {
-    r.ffmpeg.stdio[1].unpipe(res);
+    var i=streamCfg.res.indexOf(res);
+    i!=-1 && streamCfg.res.splice(i,1);
+    console.log("Client disconnect from stream %s",idx);
   });
 });
-
-/*app.get('/:streamId/test2.mp4', (req, res) => {
-  var idx=Number(req.params.streamId);
-  var streamCfg=settings.streams[idx];
-  if (!streamCfg){
-    res.status(404);
-    res.end('Have not config for '+req.params.streamId);
-    return;
-  }
-  var r=streamCfg.running;
-
-  if (!r.mp4segmenter.initSegment) {
-    res.status(503);
-    res.end('service not available');
-    return;
-  }
-
-  function writeSegment(data) {
-    res.write(data);
-  }
-  res.status(200);
-  res.write(r.mp4segmenter.initSegment);
-  r.mp4segmenter.on('segment', writeSegment);
-  res.on('close', () => {
-    r.mp4segmenter.removeListener('segment', writeSegment);
-  });
-});*/
 
 app.get('/', (req, res) => {
   //res.sendFile(__dirname + '/index.html');
@@ -97,11 +102,14 @@ app.get('/', (req, res) => {
   });
 });
 
-app.get('/flv.min.js', (req, res) => {
-  res.sendFile(__dirname + '/node_modules/flv.js/dist/flv.min.js');
+//app.get('/flv.min.js', (req, res) => {
+//  res.sendFile(__dirname + '/node_modules/flv.js/dist/flv.min.js');
+//});
+app.get('/afterglow.min.js', (req, res) => {
+  res.sendFile(__dirname + '/node_modules/afterglowplayer/dist/afterglow.min.js');
 });
 
-io.on('connection', (socket) => {
+/*io.on('connection', (socket) => {
   console.log('A user connected');
 
   function start() {
@@ -150,7 +158,7 @@ io.on('connection', (socket) => {
     stop();
     console.log('A user disconnected');
   });
-});
+});*/
 
 var lhost=settings.listenInterface||'127.0.0.1';
 var lport=settings.listenPort||3000;
