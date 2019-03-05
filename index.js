@@ -13,8 +13,9 @@ settings.streams.forEach(function(streamCfg,idx){
   streamCfg.res=streamCfg.res||[];
 
   var initFFmpeg=function(){
-    console.log("running ffmpeg %s",streamCfg.uri);
+    console.log("[%s] running ffmpeg %s",idx,streamCfg.uri);
     var r=streamCfg.running={};
+    r.stat={bytes:0};
     r.mp4segmenter = new Mp4Segmenter();
 
     r.ffmpeg = spawn('ffmpeg', ['-loglevel', 'debug', '-reorder_queue_size', '5', '-rtsp_transport', 'tcp', '-i', streamCfg.uri,
@@ -40,6 +41,7 @@ settings.streams.forEach(function(streamCfg,idx){
     r.ready=false;
 
     r.writeSegment=function(chunk){
+      //console.log("[%s] Segment",idx);
       clearTimeout(r.segmentTimeout);
       r.segmentTimeout=setTimeout(r.onSegmentTimeout,10000);
       streamCfg.res.forEach((res)=>{
@@ -47,13 +49,16 @@ settings.streams.forEach(function(streamCfg,idx){
           if (!r.mp4segmenter.initSegment) return;
           res.write(r.mp4segmenter.initSegment);
           res.initSegmentSended=true;
-        }
 
+        }
+        if (chunk) r.stat.bytes+=chunk.length;
+        chunk && console.log('[%s] stat:%j',idx,r.stat);
         chunk && res.write(chunk);
       });
     };//writeSegment
 
     r.mp4segmenter.on('initSegmentReady',(codecString)=>{
+      console.log('[%s] initSegment',idx);
       //send only init segment
       r.writeSegment(null);
       r.ready=true;
@@ -62,17 +67,18 @@ settings.streams.forEach(function(streamCfg,idx){
     r.close=function(){
       r.mp4segmenter.removeListener('segment', r.writeSegment);
       r.ffmpeg.stdio[1].unpipe(r.mp4segmenter);
-      r.ffmpeg.stdin.pause();
-      r.ffmpeg.kill();
+
+      r.ffmpeg && r.ffmpeg.stdio[0] && r.ffmpeg.stdio[0].pause();
+      r.ffmpeg && r.ffmpeg.kill && r.ffmpeg.kill();
     }
 
     r.onSegmentTimeout=function(){
-      console.log("segmentTimeout");
+      console.log("[%s] segmentTimeout",idx);
       //Reload ffmpeg
       r.close();
       initFFmpeg();
     }
-    r.segmentTimeout=setTimeout(r.onSegmentTimeout,10000);
+    r.segmentTimeout=setTimeout(r.onSegmentTimeout,settings.segmentTimeout||30000);
 
     r.mp4segmenter.on('segment',r.writeSegment);
   }
@@ -93,6 +99,7 @@ app.get('/:streamId/test.mp4', (req, res) => {
     i!=-1 && streamCfg.res.splice(i,1);
     console.log("Client disconnect from stream %s",idx);
   });
+  streamCfg.res.push(res);
 });
 
 app.get('/', (req, res) => {
@@ -107,6 +114,9 @@ app.get('/', (req, res) => {
 //});
 app.get('/afterglow.min.js', (req, res) => {
   res.sendFile(__dirname + '/node_modules/afterglowplayer/dist/afterglow.min.js');
+});
+app.get('/client.js', (req, res) => {
+  res.sendFile(__dirname + '/client.js');
 });
 
 /*io.on('connection', (socket) => {

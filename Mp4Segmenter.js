@@ -36,8 +36,8 @@ class Mp4Segmenter extends Transform {
             return errorHandler(new Error('header does not contain codec information'));
         }
         this._codecString = `video/mp4; codecs="avc1.${this._initSegment.slice(index , index + 3).toString('hex').toUpperCase()}${audioString}"`;
-        console.log(this._codecString);
-        console.log('init segment ready');
+        //console.log(this._codecString);
+        //console.log('init segment ready');
         this.emit('initSegmentReady',this._codecString);
     }
 

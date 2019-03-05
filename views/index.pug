@@ -1,8 +1,21 @@
 extends layout
+append scripts
+  script(src="/client.js")
 block content
+  style.
+    .video-js{
+      display:inline-block;
+    }
+    .video-js .vjs-tech {
+      pointer-events: none;
+    }
+    .vjs-control.vjs-button.vjs-playing{
+      display:none;
+    }
+  script.
+    document.streams={};
   for streamCfg,idx in settings.streams
     if (streamCfg.running.ready)
-    video(id="video"+idx,width=600,height=600,src="/"+idx+"/test.mp4",controls)
+    video.afterglow(id="video"+idx,width=600,height=600,src="/"+idx+"/test.mp4")
     script
-      | document.getElementById("video#{idx}").volume=#{(streamCfg.volume/100).toFixed(2)};
-      | document.getElementById("video#{idx}").play();
+      | document.streams[#{idx}]={volume:#{streamCfg.volume},video:document.getElementById("video#{idx}")};
