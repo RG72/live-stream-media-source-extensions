@@ -28,7 +28,7 @@ settings.streams.forEach(function(streamCfg,idx){
     }
 
     r.ffmpeg = spawn('ffmpeg', args, {
-      stdio: ['ignore', 'pipe', 'inherit' /* change stdio[2] inherit to ignore to hide ffmpeg debug to stderr */ ]
+      stdio: ['pipe', 'pipe', 'inherit' /* change stdio[2] inherit to ignore to hide ffmpeg debug to stderr */ ]
       //stdio:['ignore','ignore','ignore']
     });
 
