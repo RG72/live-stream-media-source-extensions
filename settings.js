@@ -1,31 +1,34 @@
 //Stream uris
 module.exports={
   listenInterface:'0.0.0.0',
-  listenPort:3001,
+  listenPort:3000,
+  segmentTimeout:60000,
+  //ffmpegLogLevel:'debug',
   streams:[
     {
-      uri:'rtsp://root:root@192.168.20.108/axis-media/media.amp',
+      uri:'rtsp://user:password@192.168.20.108/axis-media/media.amp',
+      volume:0,
+      //segmentTimeout:120000,
+    },{
+      uri:'rtsp://user:password@192.168.20.130/axis-media/media.amp',
+      volume:0
+    },{
+      uri:'rtsp://user:password@192.168.20.103/axis-media/media.amp',
+      volume:0
+    },{
+      uri:'rtsp://user:password@192.168.20.102/axis-media/media.amp',
+      volume:0
+    },{
+      uri:'rtsp://user:password@192.168.20.107/axis-media/media.amp',
       volume:100
     },{
-      uri:'rtsp://root:root@192.168.20.109/axis-media/media.amp',
+      uri:'rtsp://user:password@192.168.20.106/axis-media/media.amp',
+      volume:0
+    },{
+      uri:'rtsp://user:password@192.168.20.105/axis-media/media.amp',
       volume:100
     },{
-      uri:'rtsp://root:root@192.168.20.103/axis-media/media.amp',
-      volume:100
-    },{
-      uri:'rtsp://root:root@192.168.20.102/axis-media/media.amp',
-      volume:100
-    },{
-      uri:'rtsp://root:root@192.168.20.107/axis-media/media.amp',
-      volume:100
-    },{
-      uri:'rtsp://root:root@192.168.20.106/axis-media/media.amp',
-      volume:100
-    },{
-      uri:'rtsp://root:root@192.168.20.105/axis-media/media.amp',
-      volume:100
-    },{
-      uri:'rtsp://root:root@192.168.20.110/axis-media/media.amp',      
+      uri:'rtsp://user:password@192.168.20.110/axis-media/media.amp',
       volume:100
     }
   ]

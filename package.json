@@ -1,6 +1,6 @@
 {
   "name": "mse",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Live stream h264 encoded mp4 video on media source extensions using ffmpeg, node.js, socket.io, and express",
   "main": "index.js",
   "scripts": {
@@ -17,15 +17,20 @@
     "h264",
     "ffmpeg",
     "node.js",
-    "socket.io",
-    "express"
+    "express",
+    "rtsp",
+    "axis",
+    "camera"
   ],
-  "author": "Kevin Godell <kevin.godell@gmail.com>",
+  "author": [
+    "Kevin Godell <kevin.godell@gmail.com>",
+    "Aleksey Druzhinin <alexey@yourtask.ru>"
+  ],
   "license": "MIT",
   "dependencies": {
     "express": "^4.16.2",
-    "socket.io": "^2.0.4",
     "pug": ">0.0.1",
     "afterglowplayer": ">0.0.1"
-  }
+  },
+  "homepage": "https://github.com/RG72/live-stream-media-source-extensions"
 }

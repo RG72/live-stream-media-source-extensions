@@ -16,6 +16,6 @@ block content
     document.streams={};
   for streamCfg,idx in settings.streams
     if (streamCfg.running.ready)
-    video.afterglow(id="video"+idx,width=600,height=600,src="/"+idx+"/test.mp4")
+    video.afterglow(id="video"+idx,width=600,height=400,src="/"+idx+"/test.mp4")
     script
       | document.streams[#{idx}]={volume:#{streamCfg.volume},video:document.getElementById("video#{idx}")};

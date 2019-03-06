@@ -3,7 +3,7 @@ for (var key in document.streams){
   stream.volume!=undefined && stream.video.setAttribute('data-volume',Number(stream.volume/100).toFixed(2));
   stream.video.volume=Number(stream.volume/100);
   stream.video.setAttribute('width',stream.width||600);
-  stream.video.setAttribute('height',stream.height||600);
+  stream.video.setAttribute('height',stream.height||400);
   stream.video.setAttribute('data-autoresize','none');
   stream.video.setAttribute('data-setup','{"controls": false}');
 

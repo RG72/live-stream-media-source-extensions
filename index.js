@@ -4,7 +4,6 @@
 //const allowedOrigins = "http://localhost:* http://127.0.0.1:*";//not sure if will need this
 const app = require('express')();
 const http = require('http').Server(app);
-const io = require('socket.io')(http /*, {origins: allowedOrigins}*/ );
 var settings=require('./settings.js');
 const {spawn} = require('child_process');
 const Mp4Segmenter = new require('./Mp4Segmenter');
@@ -18,11 +17,17 @@ settings.streams.forEach(function(streamCfg,idx){
     r.stat={bytes:0};
     r.mp4segmenter = new Mp4Segmenter();
 
-    r.ffmpeg = spawn('ffmpeg', ['-loglevel', 'debug', '-reorder_queue_size', '5', '-rtsp_transport', 'tcp', '-i', streamCfg.uri,
+    var args=['-reorder_queue_size', '5', '-rtsp_transport', 'tcp', '-i', streamCfg.uri,
     //'-an', //disable audio
     '-use_wallclock_as_timestamps','1',
     '-fflags','+genpts',
-    '-c:v', 'copy', '-f', 'mp4', '-movflags', '+frag_keyframe+empty_moov+default_base_moof', '-metadata', 'title="media source extensions"', 'pipe:1'], {
+    '-c:v', 'copy', '-f', 'mp4', '-movflags', '+frag_keyframe+empty_moov+default_base_moof', '-metadata', 'title="media source extensions"', 'pipe:1'];
+    if (settings.ffmpegLogLevel){
+      args.unshift(settings.ffmpegLogLevel);
+      args.unshift('-loglevel');
+    }
+
+    r.ffmpeg = spawn('ffmpeg', args, {
       stdio: ['ignore', 'pipe', 'inherit' /* change stdio[2] inherit to ignore to hide ffmpeg debug to stderr */ ]
       //stdio:['ignore','ignore','ignore']
     });
@@ -43,17 +48,21 @@ settings.streams.forEach(function(streamCfg,idx){
     r.writeSegment=function(chunk){
       //console.log("[%s] Segment",idx);
       clearTimeout(r.segmentTimeout);
-      r.segmentTimeout=setTimeout(r.onSegmentTimeout,10000);
+      r.segmentTimeout=setTimeout(r.onSegmentTimeout,streamCfg.segmentTimeout||settings.segmentTimeout||60000);
       streamCfg.res.forEach((res)=>{
-        if (!res.initSegmentSended){
-          if (!r.mp4segmenter.initSegment) return;
-          res.write(r.mp4segmenter.initSegment);
-          res.initSegmentSended=true;
+        try{
+          if (!res.initSegmentSended){
+            if (!r.mp4segmenter.initSegment) return;
+            res.write(r.mp4segmenter.initSegment);
+            res.initSegmentSended=true;
 
+          }
+          if (chunk) r.stat.bytes+=chunk.length;
+          chunk && console.log('[%s] stat:%j',idx,r.stat);
+          chunk && res.write(chunk);
+        }catch(e){
+          console.log("res send error",e.toString());
         }
-        if (chunk) r.stat.bytes+=chunk.length;
-        chunk && console.log('[%s] stat:%j',idx,r.stat);
-        chunk && res.write(chunk);
       });
     };//writeSegment
 
@@ -78,10 +87,10 @@ settings.streams.forEach(function(streamCfg,idx){
       r.close();
       initFFmpeg();
     }
-    r.segmentTimeout=setTimeout(r.onSegmentTimeout,settings.segmentTimeout||30000);
+    r.segmentTimeout=setTimeout(r.onSegmentTimeout,streamCfg.segmentTimeout||settings.segmentTimeout||60000);
 
     r.mp4segmenter.on('segment',r.writeSegment);
-  }
+  };//initFFmpeg
   initFFmpeg();
 });
 
@@ -103,72 +112,16 @@ app.get('/:streamId/test.mp4', (req, res) => {
 });
 
 app.get('/', (req, res) => {
-  //res.sendFile(__dirname + '/index.html');
   res.render('index.pug',{
     settings:settings
   });
 });
-
-//app.get('/flv.min.js', (req, res) => {
-//  res.sendFile(__dirname + '/node_modules/flv.js/dist/flv.min.js');
-//});
 app.get('/afterglow.min.js', (req, res) => {
   res.sendFile(__dirname + '/node_modules/afterglowplayer/dist/afterglow.min.js');
 });
 app.get('/client.js', (req, res) => {
   res.sendFile(__dirname + '/client.js');
 });
-
-/*io.on('connection', (socket) => {
-  console.log('A user connected');
-
-  function start() {
-    if (mp4segmenter.initSegment) {
-      socket.emit('segment', mp4segmenter.initSegment);
-      mp4segmenter.on('segment', emitSegment);
-    } else {
-      socket.emit('message', 'init segment not ready yet, reload page');
-    }
-  }
-
-  function pause() {
-    console.log('pause');
-  }
-
-  function resume() {
-    console.log('resume');
-  }
-
-  function stop() {
-    mp4segmenter.removeListener('segment', emitSegment);
-  }
-
-  function emitSegment(data) {
-    socket.emit('segment', data);
-  }
-
-  socket.on('message', (msg) => {
-    switch (msg) {
-      case 'start':
-        start();
-        break;
-      case 'pause':
-        pause();
-        break;
-      case 'resume':
-        resume();
-        break;
-      case 'stop':
-        stop();
-        break;
-    }
-  });
-
-  socket.on('disconnect', () => {
-    stop();
-    console.log('A user disconnected');
-  });
-});*/
 
 var lhost=settings.listenInterface||'127.0.0.1';
 var lport=settings.listenPort||3000;
