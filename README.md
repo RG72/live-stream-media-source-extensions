@@ -16,7 +16,7 @@ Open your browser to localhost:3000
 # Settings
 
 To enable autoplay tune autoplay policy in browser.
-[Chrome autoplay policy](chrome://flags/#autoplay-policy)
+Example: Chrome chrome://flags/#autoplay-policy
 
 Configure your streams in settings.js
 ```
