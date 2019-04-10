@@ -2,7 +2,7 @@
 Live stream h264 encoded mp4 video on media source extensions using ffmpeg, node.js, and express. Works in chrome, firefox, safari, and android. Not iOS compatible.
 
 ```
-git clone https://github.com/kevinGodell/live-stream-media-source-extensions.git
+git clone https://github.com/RG72/live-stream-media-source-extensions.git
 
 cd live-stream-media-source-extensions
 
