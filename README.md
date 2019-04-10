@@ -3,11 +3,8 @@ Live stream h264 encoded mp4 video on media source extensions using ffmpeg, node
 
 ```
 git clone https://github.com/RG72/live-stream-media-source-extensions.git
-
 cd live-stream-media-source-extensions
-
 npm install
-
 node index.js
 ```
 
